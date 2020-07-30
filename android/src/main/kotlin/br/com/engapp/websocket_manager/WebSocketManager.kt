@@ -4,15 +4,19 @@ import android.os.Handler
 import android.os.Looper
 import okhttp3.*
 import okio.ByteString
+import java.security.cert.CertificateException
+import java.security.cert.X509Certificate
 import java.util.*
+import javax.net.ssl.HostnameVerifier
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManager
+import javax.net.ssl.X509TrustManager
 
 
 class StreamWebSocketManager: WebSocketListener() {
 
-
     private val uiThreadHandler: Handler = Handler(Looper.getMainLooper())
     private var ws: WebSocket? = null
-    private val client = OkHttpClient()
     private var url: String? = null
     private var header: Map<String,String>? = null
     var updatesEnabled = false
@@ -127,10 +131,30 @@ class StreamWebSocketManager: WebSocketListener() {
 //            //  Log.i("StreamWebSocketManager","has no headers")
 //        }
         val req: Request = reqBuilder.build()
-        //  Log.i("StreamWebSocketManager","method: ${req.method}")
-        //  Log.i("StreamWebSocketManager","url: ${req.url}")
+
+        val trustAllCerts = arrayOf<TrustManager>(object : X509TrustManager {
+            override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {
+            }
+
+            override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {
+            }
+
+            override fun getAcceptedIssuers() = arrayOf<X509Certificate>()
+        })
+
+        val sslContext = SSLContext.getInstance("SSL")
+        sslContext.init(null, trustAllCerts, java.security.SecureRandom())
+        // Create an ssl socket factory with our all-trusting manager
+        val sslSocketFactory = sslContext.socketFactory
+        val clientBuilder = OkHttpClient.Builder()
+
+        clientBuilder
+                .sslSocketFactory(sslSocketFactory, trustAllCerts[0] as X509TrustManager)
+                .hostnameVerifier(HostnameVerifier(){ _, _ -> true })
+
+        val client = clientBuilder.build()
+
         ws = client.newWebSocket(req,this)
-//        client.dispatcher.executorService.shutdown()
     }
 
     fun disconnect() {

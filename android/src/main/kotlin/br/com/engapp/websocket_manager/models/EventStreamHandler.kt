@@ -34,7 +34,7 @@ class EventStreamHandler(onNullSink:()->Unit, onCancelCallback: () -> Unit) : Ev
 
     fun send(data: Any?){
         if (this.sink != null) {
-            Log.i("EventStreamHandler","✅ sink is not null")
+//            Log.i("EventStreamHandler","✅ sink is not null")
             try {
                 sink!!.success(data)
             }catch (e: Exception){
